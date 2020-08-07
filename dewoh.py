@@ -1,6 +1,8 @@
-import requests
+import sys
 import time
 import pickle
+import requests
+import datetime
 
 import summoners
 
@@ -21,33 +23,34 @@ def get_summoner_id(summoner_name):
     response = requests.get(f"https://oc1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={KEY}")
 
     if not response.ok:
-        print (f"ERROR get_summoner_id: status code {response.status_code}")
+        print(f"ERROR get_summoner_id: status code {response.status_code}")
         exit(1)
 
     account_id = response.json()["accountId"]
-    print("Account ID for", summoner_name, "is ", account_id)
+    print("Account ID for", summoner_name, "is", account_id)
+    print("Saving to database...")
 
     SUMMONER_IDS[summoner_name] = account_id
     summoners.save_summoners(SUMMONER_IDS)
 
     return account_id
 
-
 def get_match_history(account_id, begin_index, end_index):
     print("Getting match history")
     response = requests.get(f"https://oc1.api.riotgames.com/lol/match/v4/matchlists/by-account/{account_id}?endIndex={end_index}&beginIndex={begin_index}&api_key={KEY}")
 
     if not response.ok:
-        print (f"ERROR get_match_history: status code {response.status_code}")
+        print(f"ERROR get_match_history: status code {response.status_code}")
         exit(1)
 
     return response.json()
 
-def get_game_ids(account_id):
+def get_game_ids(account_id, pages):
     # Returns a list of game ids that they have played in
 
     game_ids = []
-    for begin_index in range(0, 1000, 100):
+    max_index = pages * 100
+    for begin_index in range(0, pages, 100):
         match_history = get_match_history(account_id, begin_index, begin_index + 100)
 
         for match in match_history["matches"]:
@@ -77,7 +80,7 @@ def get_game_information(game_id, a1, a2):
     response = requests.get(f"https://oc1.api.riotgames.com//lol/match/v4/matches/{game_id}?api_key={KEY}")
 
     if not response.ok:
-        print (f"ERROR get_game_information: status code {response.status_code}")
+        print(f"ERROR get_game_information: status code {response.status_code}")
         exit(1)
 
     game_data = response.json()
@@ -99,16 +102,29 @@ def get_game_information(game_id, a1, a2):
         if t["teamId"] == teamId:
             return (t["win"] == "Win", game_data["gameCreation"])
 
-### MAIN ###
+
+################################################################################
+#                                                                              #
+#                                   MAIN                                       #
+#                                                                              #
+################################################################################
 
 # SUM_1 = "Hayeselnut" # input("First summoner name: ")
 # SUM_2 = "eZED" # input("Second summoner name: ")
 
-sum_1_id = get_summoner_id("Hayeselnut")
-sum_2_id = get_summoner_id("Yur Faddur")
+if len(sys.argv) != 4:
+    print("USAGE: python3 dewoh.py SUMMONER_NAME_1 SUMMONER_NAME_2")
+    exit(1)
 
-sum_1_game_ids = get_game_ids(sum_1_id)
-sum_2_game_ids = get_game_ids(sum_2_id)
+
+sum_name_1 = sys.argv[2]
+sum_name_2 = sys.argv[3]
+
+sum_1_id = get_summoner_id(sum_name_1)
+sum_2_id = get_summoner_id(sum_name_2)
+
+sum_1_game_ids = get_game_ids(sum_1_id, 2)
+sum_2_game_ids = get_game_ids(sum_2_id, 2)
 
 common_game_ids = intersection(sum_1_game_ids, sum_2_game_ids)
 
@@ -137,4 +153,6 @@ total_games = wins + losses
 
 win_rate = 100.0 * wins / total_games
 
-print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
+print ("")
+print ("Win rate between", sum_name_1, "and", sum_name_2)
+print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp), game_timestamp)
