@@ -6,7 +6,7 @@ import datetime
 
 import summoners
 
-KEY = "RGAPI-41b0f0c2-eeff-483c-9195-76d8fe0d604d"
+KEY = "RGAPI-8311e81c-3fca-4487-a41f-da2cee2314aa"
 
 SUMMONER_IDS = summoners.load_summoners()
 
@@ -23,6 +23,10 @@ def get_summoner_id(summoner_name):
     response = requests.get(f"https://oc1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={KEY}")
 
     if not response.ok:
+        if response.status_code == 504:
+            print(f"ERROR get_summoner_id: status code {response.status_code}. Retrying...")
+            return get_summoner_id(summoner_name)
+
         print(f"ERROR get_summoner_id: status code {response.status_code}")
         exit(1)
 
@@ -40,6 +44,10 @@ def get_match_history(account_id, begin_index, end_index):
     response = requests.get(f"https://oc1.api.riotgames.com/lol/match/v4/matchlists/by-account/{account_id}?endIndex={end_index}&beginIndex={begin_index}&api_key={KEY}")
 
     if not response.ok:
+        if response.status_code == 504:
+            print(f"ERROR get_match_history: status code {response.status_code}. Retrying...")
+            return get_match_history(account_id, begin_index, end_index)
+
         print(f"ERROR get_match_history: status code {response.status_code}")
         exit(1)
 
@@ -80,6 +88,10 @@ def get_game_information(game_id, a1, a2):
     response = requests.get(f"https://oc1.api.riotgames.com//lol/match/v4/matches/{game_id}?api_key={KEY}")
 
     if not response.ok:
+        if response.status_code == 504:
+            print(f"ERROR get_game_information: status code {response.status_code}. Retrying...")
+            return get_game_information(game_id, a1, a2)
+
         print(f"ERROR get_game_information: status code {response.status_code}")
         exit(1)
 
@@ -142,14 +154,14 @@ for g in common_game_ids:
     (game_result, game_timestamp) = get_game_information(g, sum_1_id, sum_2_id)
 
     if game_result == -1:
-        print(index, "/", games_to_check, "checking game_id: ", g, "n/a - played as opponents")
+        print(index, "/", games_to_check, "checking game_id: ", g, "n/a - played as opponents", time.ctime(game_timestamp/1000))
         continue
     elif game_result == 1:
-        print(index, "/", games_to_check, "checking game_id: ", g, "win")
+        print(index, "/", games_to_check, "checking game_id: ", g, "win", time.ctime(game_timestamp/1000))
 
         wins += 1
     else:
-        print(index, "/", games_to_check, "checking game_id: ", g, "loss")
+        print(index, "/", games_to_check, "checking game_id: ", g, "loss", time.ctime(game_timestamp/1000))
         losses += 1
     index += 1
 
@@ -159,7 +171,7 @@ if total_games == 0:
     exit(0)
 
 win_rate = 100.0 * wins / total_games
-game_timestamp /= 1000
+game_timestamp /= 1000 # timestamp was in milliseconds
 
 print ("\nWin rate between", sum_name_1, "and", sum_name_2)
 print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
