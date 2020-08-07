@@ -50,7 +50,7 @@ def get_game_ids(account_id, pages):
 
     game_ids = []
     max_index = pages * 100
-    for begin_index in range(0, pages, 100):
+    for begin_index in range(0, max_index, 100):
         match_history = get_match_history(account_id, begin_index, begin_index + 100)
 
         for match in match_history["matches"]:
@@ -113,18 +113,19 @@ def get_game_information(game_id, a1, a2):
 # SUM_2 = "eZED" # input("Second summoner name: ")
 
 if len(sys.argv) != 4:
-    print("USAGE: python3 dewoh.py SUMMONER_NAME_1 SUMMONER_NAME_2")
+    print("USAGE: python3 dewoh.py <SUMMONER_NAME_1> <SUMMONER_NAME_2> <pages>")
     exit(1)
 
 
-sum_name_1 = sys.argv[2]
-sum_name_2 = sys.argv[3]
+sum_name_1 = sys.argv[1]
+sum_name_2 = sys.argv[2]
+pages = int(sys.argv[3])
 
 sum_1_id = get_summoner_id(sum_name_1)
 sum_2_id = get_summoner_id(sum_name_2)
 
-sum_1_game_ids = get_game_ids(sum_1_id, 2)
-sum_2_game_ids = get_game_ids(sum_2_id, 2)
+sum_1_game_ids = get_game_ids(sum_1_id, pages)
+sum_2_game_ids = get_game_ids(sum_2_id, pages)
 
 common_game_ids = intersection(sum_1_game_ids, sum_2_game_ids)
 
@@ -137,22 +138,28 @@ game_timestamp = 0
 index = 1
 games_to_check = len(common_game_ids)
 for g in common_game_ids:
-    print(index, "/", games_to_check, "checking game_id: ", g)
-    index += 1
     time.sleep(1)
     (game_result, game_timestamp) = get_game_information(g, sum_1_id, sum_2_id)
 
     if game_result == -1:
+        print(index, "/", games_to_check, "checking game_id: ", g, "n/a - played as opponents")
         continue
     elif game_result == 1:
+        print(index, "/", games_to_check, "checking game_id: ", g, "win")
+
         wins += 1
     else:
+        print(index, "/", games_to_check, "checking game_id: ", g, "loss")
         losses += 1
+    index += 1
 
 total_games = wins + losses
+if total_games == 0:
+    print(f"\n{sum_name_1} and {sum_name_2} have not played together recently")
+    exit(0)
 
 win_rate = 100.0 * wins / total_games
+game_timestamp /= 1000
 
-print ("")
-print ("Win rate between", sum_name_1, "and", sum_name_2)
-print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp), game_timestamp)
+print ("\nWin rate between", sum_name_1, "and", sum_name_2)
+print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
