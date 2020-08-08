@@ -1,12 +1,14 @@
+import datetime
+import requests
+import pickle
+import queues
 import sys
 import time
-import pickle
-import requests
-import datetime
 
 import summoners
 
 KEY = "RGAPI-8311e81c-3fca-4487-a41f-da2cee2314aa"
+DELAY = 0.6
 
 SUMMONER_IDS = summoners.load_summoners()
 
@@ -21,6 +23,7 @@ def get_summoner_id(summoner_name):
     print("CALLING API TO LOOK for ", summoner_name)
 
     response = requests.get(f"https://oc1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={KEY}")
+    time.sleep(DELAY)
 
     if not response.ok:
         if response.status_code == 504:
@@ -42,6 +45,7 @@ def get_summoner_id(summoner_name):
 def get_match_history(account_id, begin_index, end_index):
     print("Getting match history")
     response = requests.get(f"https://oc1.api.riotgames.com/lol/match/v4/matchlists/by-account/{account_id}?endIndex={end_index}&beginIndex={begin_index}&api_key={KEY}")
+    time.sleep(DELAY)
 
     if not response.ok:
         if response.status_code == 504:
@@ -86,6 +90,7 @@ def verify_same_team(game_data, part_id1, part_id2):
 
 def get_game_information(game_id, a1, a2):
     response = requests.get(f"https://oc1.api.riotgames.com//lol/match/v4/matches/{game_id}?api_key={KEY}")
+    time.sleep(DELAY)
 
     if not response.ok:
         if response.status_code == 504:
@@ -107,7 +112,7 @@ def get_game_information(game_id, a1, a2):
     teamId = verify_same_team(game_data, part_id1, part_id2)
 
     if teamId == 0:
-        return (-1, 0)
+        return (-1, game_data["gameCreation"], -1)
 
     # find the team outcome WIN/LOSE
     for t in game_data["teams"]:
@@ -149,19 +154,25 @@ game_timestamp = 0
 
 index = 1
 games_to_check = len(common_game_ids)
+game_results = {}
 for g in common_game_ids:
-    time.sleep(1)
+    time.sleep(DELAY)
     game_result, game_timestamp, queue_id = get_game_information(g, sum_1_id, sum_2_id)
+
+    if queue_id not in game_results:
+        game_results[queue_id] = {"W": 0, "L": 0}
 
     if game_result == -1:
         print(index, "/", games_to_check, "checking game_id: ", g, "n/a - played as opponents", time.ctime(game_timestamp/1000))
+        index += 1
         continue
     elif game_result == 1:
         print(index, "/", games_to_check, "checking game_id: ", g, "win", time.ctime(game_timestamp/1000))
-
+        game_results[queue_id]["W"] += 1
         wins += 1
     else:
         print(index, "/", games_to_check, "checking game_id: ", g, "loss", time.ctime(game_timestamp/1000))
+        game_results[queue_id]["L"] += 1
         losses += 1
     index += 1
 
@@ -173,5 +184,25 @@ if total_games == 0:
 win_rate = 100.0 * wins / total_games
 game_timestamp /= 1000 # timestamp is in milliseconds
 
-print ("\nWin rate between", sum_name_1, "and", sum_name_2)
-print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
+print(f"\nWIN RATE STATISTICS FOR {sum_name_1} AND {sum_name_2}")
+print("-------------------------------------------------------")
+print(f"Overall: {wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
+print("-------------------------------------------------------")
+print("Breakdown by queue:")
+for q in game_results:
+    if q == -1:
+        continue
+
+    q_data = queues.find_queue(q)
+
+    q_desc = q_data["description"]
+
+    q_wins = game_results[q]["W"]
+    q_losses = game_results[q]["L"]
+    q_total_games = q_wins + q_losses
+    q_win_rate = 100.0 * q_wins / q_total_games
+
+    print(f"{q_desc} - {q_wins} / {q_total_games} won: {q_win_rate}%")
+
+print("\n")
+    
