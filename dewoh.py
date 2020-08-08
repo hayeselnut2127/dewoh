@@ -2,8 +2,8 @@ import datetime
 import requests
 import pickle
 import queues
-import sys
 import time
+import sys
 
 import summoners
 

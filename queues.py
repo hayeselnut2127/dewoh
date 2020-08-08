@@ -12,7 +12,7 @@ NOT_FOUND = {
 }
 
 def find_queue(queue_id):
-    queues = requests.get("http://static.developer.riotgames.com/docs/lol/queues.json").json()
+    queues = requests.get(url).json()
 
     for q in queues:
         if q["queueId"] == queue_id:
