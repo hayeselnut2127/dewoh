@@ -112,7 +112,7 @@ def get_game_information(game_id, a1, a2):
     # find the team outcome WIN/LOSE
     for t in game_data["teams"]:
         if t["teamId"] == teamId:
-            return (t["win"] == "Win", game_data["gameCreation"])
+            return (t["win"] == "Win", game_data["gameCreation"], game_data["queueId"])
 
 
 ################################################################################
@@ -151,7 +151,7 @@ index = 1
 games_to_check = len(common_game_ids)
 for g in common_game_ids:
     time.sleep(1)
-    (game_result, game_timestamp) = get_game_information(g, sum_1_id, sum_2_id)
+    game_result, game_timestamp, queue_id = get_game_information(g, sum_1_id, sum_2_id)
 
     if game_result == -1:
         print(index, "/", games_to_check, "checking game_id: ", g, "n/a - played as opponents", time.ctime(game_timestamp/1000))
@@ -171,7 +171,7 @@ if total_games == 0:
     exit(0)
 
 win_rate = 100.0 * wins / total_games
-game_timestamp /= 1000 # timestamp was in milliseconds
+game_timestamp /= 1000 # timestamp is in milliseconds
 
 print ("\nWin rate between", sum_name_1, "and", sum_name_2)
 print(f"{wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
