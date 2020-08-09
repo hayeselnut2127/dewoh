@@ -7,7 +7,7 @@ import sys
 
 import summoners
 
-KEY = "RGAPI-8311e81c-3fca-4487-a41f-da2cee2314aa"
+KEY = "RGAPI-5b5811c0-daee-4869-b206-94b5dc269982"
 DELAY = 0.6
 
 SUMMONER_IDS = summoners.load_summoners()
@@ -20,7 +20,7 @@ def get_summoner_id(summoner_name):
         print("FOUND ", summoner_name, "IN DATABASE")
         return SUMMONER_IDS[summoner_name]
 
-    print("CALLING API TO LOOK for ", summoner_name)
+    print("CALLING API TO LOOK for:", summoner_name)
 
     response = requests.get(f"https://oc1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={KEY}")
     time.sleep(DELAY)
@@ -119,6 +119,68 @@ def get_game_information(game_id, a1, a2):
         if t["teamId"] == teamId:
             return (t["win"] == "Win", game_data["gameCreation"], game_data["queueId"])
 
+def determine_game_outcomes(common_game_ids, sum_1_id, sum_2_id):
+    wins, losses, game_timestamp = (0, 0, 0)
+
+    game_results = {"W": 0, "L": 0}
+
+    index = 1
+    for g in common_game_ids:
+        time.sleep(DELAY)
+        result, game_timestamp, queue_id = get_game_information(g, sum_1_id, sum_2_id)
+
+        if result == -1:
+            print(index, "/", len(common_game_ids), "checking game_id: ", g, "n/a - played as opponents", time.ctime(game_timestamp/1000))
+            index += 1
+            continue
+        
+        if queue_id not in game_results:
+            game_results[queue_id] = {"W": 0, "L": 0}
+        
+        if result == 1:
+            print(index, "/", len(common_game_ids), "checking game_id: ", g, "win", time.ctime(game_timestamp / 1000))
+            game_results[queue_id]["W"] += 1
+            game_results["W"] += 1
+        else:
+            print(index, "/", len(common_game_ids), "checking game_id: ", g, "loss", time.ctime(game_timestamp / 1000))
+            game_results[queue_id]["L"] += 1
+            game_results["L"] += 1
+        index += 1
+    
+    return (game_results, game_timestamp / 1000)
+
+def print_dewoh(game_results, sum_name_1, sum_name_2, game_timestamp):
+
+    overall_wins = game_results["W"]
+    overall_losses = game_results["L"]
+    overall_games = overall_wins + overall_losses
+    
+    if overall_games == 0:
+        print(f"\n{sum_name_1} and {sum_name_2} have not played together recently")
+        return
+
+    overall_win_rate = 100.0 * overall_wins / overall_games
+
+
+    print(f"\nWIN RATE STATISTICS FOR {sum_name_1} AND {sum_name_2}")
+    print("-------------------------------------------------------")
+    print(f"Overall: {overall_wins} / {overall_games} won: {overall_win_rate}% since ", time.ctime(game_timestamp))
+    print("-------------------------------------------------------")
+    print("Breakdown by queue:")
+
+    for q in game_results:
+        if q == "W" or q == "L":
+            continue
+
+        q_data = queues.find_queue(q)
+        q_desc = q_data["description"]
+
+        q_wins = game_results[q]["W"]
+        q_losses = game_results[q]["L"]
+        q_games = q_wins + q_losses
+        q_win_rate = 100.0 * q_wins / q_games
+
+        print(f"{q_desc} - {q_wins} / {q_games} won: {q_win_rate}%")
 
 ################################################################################
 #                                                                              #
@@ -126,13 +188,9 @@ def get_game_information(game_id, a1, a2):
 #                                                                              #
 ################################################################################
 
-# SUM_1 = "Hayeselnut" # input("First summoner name: ")
-# SUM_2 = "eZED" # input("Second summoner name: ")
-
 if len(sys.argv) != 4:
     print("USAGE: python3 dewoh.py <SUMMONER_NAME_1> <SUMMONER_NAME_2> <pages>")
     exit(1)
-
 
 sum_name_1 = sys.argv[1]
 sum_name_2 = sys.argv[2]
@@ -145,64 +203,9 @@ sum_1_game_ids = get_game_ids(sum_1_id, pages)
 sum_2_game_ids = get_game_ids(sum_2_id, pages)
 
 common_game_ids = intersection(sum_1_game_ids, sum_2_game_ids)
-
 print("Common games:", common_game_ids)
 
-wins = 0
-losses = 0
-game_timestamp = 0
+game_results, game_timestamp = determine_game_outcomes(common_game_ids, sum_1_id, sum_2_id)
 
-index = 1
-games_to_check = len(common_game_ids)
-game_results = {}
-for g in common_game_ids:
-    time.sleep(DELAY)
-    game_result, game_timestamp, queue_id = get_game_information(g, sum_1_id, sum_2_id)
-
-    if queue_id not in game_results:
-        game_results[queue_id] = {"W": 0, "L": 0}
-
-    if game_result == -1:
-        print(index, "/", games_to_check, "checking game_id: ", g, "n/a - played as opponents", time.ctime(game_timestamp/1000))
-        index += 1
-        continue
-    elif game_result == 1:
-        print(index, "/", games_to_check, "checking game_id: ", g, "win", time.ctime(game_timestamp/1000))
-        game_results[queue_id]["W"] += 1
-        wins += 1
-    else:
-        print(index, "/", games_to_check, "checking game_id: ", g, "loss", time.ctime(game_timestamp/1000))
-        game_results[queue_id]["L"] += 1
-        losses += 1
-    index += 1
-
-total_games = wins + losses
-if total_games == 0:
-    print(f"\n{sum_name_1} and {sum_name_2} have not played together recently")
-    exit(0)
-
-win_rate = 100.0 * wins / total_games
-game_timestamp /= 1000 # timestamp is in milliseconds
-
-print(f"\nWIN RATE STATISTICS FOR {sum_name_1} AND {sum_name_2}")
-print("-------------------------------------------------------")
-print(f"Overall: {wins} / {total_games} won: {win_rate}% since ", time.ctime(game_timestamp))
-print("-------------------------------------------------------")
-print("Breakdown by queue:")
-for q in game_results:
-    if q == -1:
-        continue
-
-    q_data = queues.find_queue(q)
-
-    q_desc = q_data["description"]
-
-    q_wins = game_results[q]["W"]
-    q_losses = game_results[q]["L"]
-    q_total_games = q_wins + q_losses
-    q_win_rate = 100.0 * q_wins / q_total_games
-
-    print(f"{q_desc} - {q_wins} / {q_total_games} won: {q_win_rate}%")
-
-print("\n")
+print_dewoh(game_results, sum_name_1, sum_name_2, game_timestamp)
     
