@@ -2,15 +2,14 @@ import datetime
 import requests
 import pickle
 import queues
+import config
 import time
 import sys
 import os
 
 import summoners
 
-# KEY = os.environ["RIOT_API_KEY"]
-print(os.environ)
-exit(0)
+RIOT_API_KEY = config.RIOT_API_KEY
 DELAY = 0.6
 
 SUMMONER_IDS = summoners.load_summoners()
@@ -25,7 +24,7 @@ def get_summoner_id(summoner_name):
 
     print("CALLING API TO LOOK for:", summoner_name)
 
-    response = requests.get(f"https://oc1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={KEY}")
+    response = requests.get(f"https://oc1.api.riotgames.com/lol/summoner/v4/summoners/by-name/{summoner_name}?api_key={RIOT_API_KEY}")
     time.sleep(DELAY)
 
     if not response.ok:
@@ -47,7 +46,7 @@ def get_summoner_id(summoner_name):
 
 def get_match_history(account_id, begin_index, end_index):
     print("Getting match history")
-    response = requests.get(f"https://oc1.api.riotgames.com/lol/match/v4/matchlists/by-account/{account_id}?endIndex={end_index}&beginIndex={begin_index}&api_key={KEY}")
+    response = requests.get(f"https://oc1.api.riotgames.com/lol/match/v4/matchlists/by-account/{account_id}?endIndex={end_index}&beginIndex={begin_index}&api_key={RIOT_API_KEY}")
     time.sleep(DELAY)
 
     if not response.ok:
@@ -92,7 +91,7 @@ def verify_same_team(game_data, part_id1, part_id2):
     return 0
 
 def get_game_information(game_id, a1, a2):
-    response = requests.get(f"https://oc1.api.riotgames.com//lol/match/v4/matches/{game_id}?api_key={KEY}")
+    response = requests.get(f"https://oc1.api.riotgames.com//lol/match/v4/matches/{game_id}?api_key={RIOT_API_KEY}")
     time.sleep(DELAY)
 
     if not response.ok:

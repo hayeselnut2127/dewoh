@@ -1,4 +1,4 @@
-.env
+config.py
 *.DS_Store
 *.vscode
 *__pycache__
