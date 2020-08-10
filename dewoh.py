@@ -4,10 +4,13 @@ import pickle
 import queues
 import time
 import sys
+import os
 
 import summoners
 
-KEY = "RGAPI-0496a7a6-271b-45a2-86d9-9e30f8f46775"
+# KEY = os.environ["RIOT_API_KEY"]
+print(os.environ)
+exit(0)
 DELAY = 0.6
 
 SUMMONER_IDS = summoners.load_summoners()
