@@ -7,7 +7,7 @@ import sys
 
 import summoners
 
-KEY = "RGAPI-5b5811c0-daee-4869-b206-94b5dc269982"
+KEY = "RGAPI-0496a7a6-271b-45a2-86d9-9e30f8f46775"
 DELAY = 0.6
 
 SUMMONER_IDS = summoners.load_summoners()
